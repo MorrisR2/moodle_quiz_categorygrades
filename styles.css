@@ -1,0 +1,89 @@
+@media print {
+  table {float: none !important; }
+  div { float: none !important; }
+  .cg_attempt { page-break-inside: avoid; page-break-before: always; webkit-region-break-inside: avoid; }
+  form, .groupselector, cg_heading { display: none; }  
+}
+
+.cg_categorynamescore span {
+    table-cell;
+    display: inline-block;
+    width: 45%;
+    font-size: larger;
+    font-weight: bold;
+}
+
+span.cg_categoryscore {
+    text-align: right;
+}
+
+
+.cg_subcategorygrades .cg_subcategorygrades .cg_categorynamescore span {
+    font-size: inherit;
+    font-weight: bold;
+}
+
+.cg_subcategorygrades .cg_subcategorygrades .cg_subcategorygrades .cg_categorynamescore span {
+    font-size: larger;
+    font-weight: inherit;
+}
+
+
+ul.cg_subcategorygrades  {
+    margin-right: 8em;
+}
+
+.cg_categoryheading {
+    font-size: larger;
+}
+
+.cg_categoryheading p {
+    margin-bottom: 0.25em;
+}
+
+.cg_categoryheading .cg_userinfo {
+    font-weight: bold;
+}
+
+.cg_categorynamescore.cg_parentcat {
+    border-bottom: thin black solid;
+}
+
+.cg_categorygrades.cg_parentcat {
+    margin-bottom: 3em;
+}
+
+li:nth-child(even)  > .cg_categorygrades > .cg_leafcat {
+    background-color: #e0e0e0;
+    padding-bottom: 0.25em;
+    padding-top: 0.25em;
+}
+
+li:nth-child(odd) > .cg_categorygrades > .cg_leafcat {
+    background-color: #ffffff;
+    padding-bottom: 0.25em;
+    padding-top: 0.25em;
+}
+
+.cg_attempt {
+    margin-bottom: 5em;
+    margin-top: 5em;
+    page-break-before: always;
+}
+
+.cg_attempt > .cg_categorygrades > ul {
+    margin-left: 0em;
+}
+
+ul, li {
+    list-style-type: none;
+}
+
+.pagelayout-print .navbar, .pagelayout-print #page-header, .pagelayout-print .skiplinks, .pagelayout-print #region-header {
+    display: none;
+}
+
+body.pagelayout-print {
+    margin: 2em;
+}
+
