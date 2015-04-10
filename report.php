@@ -182,23 +182,30 @@ class quiz_categorygrades_report extends quiz_default_report {
         echo html_writer::start_tag('div', array ('class' => 'cg_attempt'));
         echo get_config('mod_quiz_report_categorygrades', 'attemptheader');
         $this->display_single_attempt_heading($quizattempt);
-        $this->getscores($quizattempt);
-
-        echo $this->printtree($this->tree);
+        echo $this->printtree($this->getscores($quizattempt));
         echo html_writer::end_tag('div');
 
     }
 
     protected function buildtree($categories, $scores) {
+        // Scores ARE passed it, and $scores is not empty
+        $tree = new stdClass;
+        $tree->children = array();
+        $tree->scores = new stdClass;
+        $tree->name = 'Total';
         foreach($categories as $cat) {
-            if(empty($this->tree->children[$cat->parent]) && !empty($categories[$cat->parent])) {
-                $this->tree->children[$cat->parent] = $categories[$cat->parent];
-                $this->tree->children[$cat->parent]->scores = (object) array('numquestions' => 0, 'sumgrade' => 0);
-                $this->tree->children[$cat->parent]->children = array();
+            if(empty($tree->children[$cat->parent]) && !empty($categories[$cat->parent])) {
+                $tree->children[$cat->parent] = $categories[$cat->parent];
+                $tree->children[$cat->parent]->scores = (object) array('numquestions' => 0, 'sumgrade' => 0);
+                $tree->children[$cat->parent]->children = array();
             }
 
-            if (!empty($categories[$cat->parent]) && !empty($scores[$cat->id])) {
-                $parent = $this->tree->children[$cat->parent];
+            if (!empty($scores[$cat->id])) {
+                if (!empty($categories[$cat->parent])) {
+                    $parent = $tree->children[$cat->parent];
+                } else {
+                    $parent = $tree;
+                }
                 $parent->children[$cat->id] = $cat;
                 $parent->children[$cat->id]->scores = $scores[$cat->id];
                 $parent->children[$cat->id]->children = array();
@@ -207,7 +214,7 @@ class quiz_categorygrades_report extends quiz_default_report {
                 $parent->scores->grade = round($parent->scores->sumgrade / $parent->scores->numquestions * 100);
             }
         }
-        return $this->tree;
+        return $tree;
     }
 
 
@@ -255,12 +262,12 @@ class quiz_categorygrades_report extends quiz_default_report {
                     AND quiza.id=?
                 GROUP BY category";
 
-        $this->leafscores = $DB->get_records_sql($sql, array($quizattempt->id));
-        $topcat = $this->lowest_common_ancestor(array_keys($this->leafscores));
-        list ($where, $params) = $DB->get_in_or_equal(array_keys($this->leafscores));
+        $leafscores = $DB->get_records_sql($sql, array($quizattempt->id));
+        $topcat = $this->lowest_common_ancestor(array_keys($leafscores));
+        list ($where, $params) = $DB->get_in_or_equal(array_keys($leafscores));
         $categories = $DB->get_records_select('question_categories', 'id ' . $where, $params);
         $allcats = $this->getsubcats($topcat);
-        return $this->buildtree($allcats, $this->leafscores);
+        return $this->buildtree($allcats, $leafscores);
     }
 
 
@@ -285,27 +292,6 @@ class quiz_categorygrades_report extends quiz_default_report {
         SELECT id, name, info, parent, sortorder, contextid, level FROM SubCategories OPTION (Maxrecursion 10);
         ";
         return $DB->get_records_sql($sql, array('catid' => $catid));
-    }
-
-
-    protected function displaycatscores($catid) {
-        $category = '';
-        if (!empty($this->leafscores[$catid]->numquestions)) {
-            $totalcount = $this->leafscores[$catid];
-        } else {
-            $totalcount = 0;
-        }
-        if (!empty($this->leafscores[$catid]->sumgrade)) {
-            $totalsumgrade = 0;
-        } else {
-            $totalsumgrade = 0;
-        }
-        foreach ($category->children as $child) {
-            list ($count, $sumgrade) = displaycatscores($child);
-            $totalcount += $count;
-            $totalsumgrade += $sumgrade;
-        }
-        echo "catid: $catid, count: $totalcount, sumgrade: $sumgrade<br />\n";
     }
 
 
