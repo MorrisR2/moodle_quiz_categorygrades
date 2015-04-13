@@ -55,8 +55,8 @@ class quiz_categorygrades_settings_form extends moodleform {
         $mform->setType('pagesize', PARAM_INT);
 
         if ($this->shownames) {
-            $orderoptions['studentfirstname'] = get_string('bystudentfirstname', 'quiz_grading');
-            $orderoptions['studentlastname']  = get_string('bystudentlastname', 'quiz_grading');
+            $orderoptions['firstname'] = get_string('bystudentfirstname', 'quiz_grading');
+            $orderoptions['lastname']  = get_string('bystudentlastname', 'quiz_grading');
         }
         if ($this->showidnumbers) {
             $orderoptions['idnumber'] = get_string('bystudentidnumber', 'quiz_grading');
