@@ -1,8 +1,9 @@
 @media print {
-  table {float: none !important; }
-  div { float: none !important; }
-  .cg_attempt { page-break-inside: avoid; page-break-before: always; webkit-region-break-inside: avoid; }
-  form, .groupselector, cg_heading { display: none; }  
+    #page-mod-quiz-report table {float: none !important; }
+    #page-mod-quiz-report div { float: none !important; }
+    #page-mod-quiz-report form, #page-mod-quiz-report .groupselector, .cg_heading, .cg_heading ~ h2, #page-mod-quiz-report .maincontent ~ h2 { display: none; }
+    #page-mod-quiz-report #page-content #region-main .region-content { padding: 1em !important; }
+    #page-mod-quiz-report #page-content-wrapper, #page-mod-quiz-report #page-wrap1, #page-mod-quiz-report #page-wrap2 { background: none !important; }
 }
 
 .cg_categorynamescore span {
@@ -68,14 +69,15 @@ li:nth-child(odd) > .cg_categorygrades > .cg_leafcat {
 .cg_attempt {
     margin-bottom: 5em;
     margin-top: 5em;
-    page-break-before: always;
 }
+
+.cg_attempt+.cg_attempt { page-break-inside: avoid; page-break-before: always; webkit-region-break-inside: avoid; }
 
 .cg_attempt > .cg_categorygrades > ul {
     margin-left: 0em;
 }
 
-ul, li {
+#page-mod-quiz-report ul, #page-mod-quiz-report li {
     list-style-type: none;
 }
 
