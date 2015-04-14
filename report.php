@@ -32,7 +32,7 @@ require_once($CFG->dirroot . '/mod/quiz/report/categorygrades/categorygradessett
  */
 class quiz_categorygrades_report extends quiz_default_report {
     const DEFAULT_PAGE_SIZE = 5;
-    const DEFAULT_ORDER = 'studentlastname';
+    const DEFAULT_ORDER = 'lastname';
 
     protected $viewoptions = array();
     protected $cm;
@@ -42,6 +42,7 @@ class quiz_categorygrades_report extends quiz_default_report {
     public function display($quiz, $cm, $course) {
         global $CFG, $PAGE, $OUTPUT;
         $PAGE->set_pagelayout('print');
+        $PAGE->requires->js('/mod/quiz/report/categorygrades/categorygrades.js');
 
         $this->quiz = $quiz;
         $this->cm = $cm;
@@ -52,6 +53,7 @@ class quiz_categorygrades_report extends quiz_default_report {
         $pagesize = optional_param('pagesize', self::DEFAULT_PAGE_SIZE, PARAM_INT);
         $page = optional_param('page', 0, PARAM_INT);
         $order = optional_param('order', self::DEFAULT_ORDER, PARAM_ALPHA);
+        $qubaid = optional_param('qubaid', null, PARAM_INT);
 
         // Assemble the options required to reload this page.
         $optparams = array('page');
@@ -74,9 +76,9 @@ class quiz_categorygrades_report extends quiz_default_report {
         $showidnumbers = has_capability('quiz/grading:viewidnumber', $this->context);
 
         // Validate order.
-        if (!in_array($order, array('random', 'date', 'studentfirstname', 'studentlastname', 'idnumber'))) {
+        if (!in_array($order, array('random', 'date', 'firstname', 'lastname', 'idnumber'))) {
             $order = self::DEFAULT_ORDER;
-        } else if (!$shownames && ($order == 'studentfirstname' || $order == 'studentlastname')) {
+        } else if (!$shownames && ($order == 'firstname' || $order == 'lastname')) {
             $order = self::DEFAULT_ORDER;
         } else if (!$showidnumbers && $order == 'idnumber') {
             $order = self::DEFAULT_ORDER;
@@ -101,7 +103,7 @@ class quiz_categorygrades_report extends quiz_default_report {
         $this->print_header_and_tabs($cm, $course, $quiz, 'categorygrades');
         echo $OUTPUT->heading(get_string('categorygrades', 'quiz_categorygrades'), 2, 'cg_heading');
 
-        
+        echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css\">\n";
         // What sort of page to display?
         if (!$hasquestions) {
             echo quiz_no_questions_message($quiz, $cm, $this->context);
@@ -112,17 +114,22 @@ class quiz_categorygrades_report extends quiz_default_report {
             // Groups is being used.
             groups_print_activity_menu($this->cm, $PAGE->url, false, true);
         }
-        $this->display_attempts($pagesize, $page, $shownames, $showidnumbers, $order, $group);
+        $this->display_attempts($pagesize, $page, $shownames, $showidnumbers, $order, $group, $qubaid);
         return true;
     }
 
-    protected function get_quiz_attempts_by_group($group = 0, $orderby = 'lastname, attempt') {
+    protected function get_quiz_attempts_by_group($group = 0, $orderby = 'lastname, attempt', $qubaid = 0) {
         global $DB;
 
         # preview = 0 will leave out admin previews
         $where = "quiz = :mangrquizid AND
                 state = :statefinished";
         $params = array('mangrquizid' => $this->cm->instance, 'statefinished' => quiz_attempt::FINISHED);
+
+        if ($qubaid) {
+            $where .= ' AND qa.id=:qubaid ';
+            $params['qubaid'] = $qubaid;
+        }
 
         if ($group) {
             $users = get_users_by_capability($this->context,
@@ -137,6 +144,7 @@ class quiz_categorygrades_report extends quiz_default_report {
                 $params += $uparam;
             }
         }
+
         $sql = "SELECT qa.*, u.firstname, u.lastname, u.idnumber FROM {quiz_attempts} AS qa JOIN {user} AS u ON qa.userid=u.id
                 WHERE $where
                 ORDER BY $orderby";
@@ -168,7 +176,11 @@ class quiz_categorygrades_report extends quiz_default_report {
     }
 
     protected function display_single_attempt_heading($quizattempt) {
+        global $OUTPUT;
         echo html_writer::start_tag('div', array ('class' => 'cg_categoryheading'));
+        $clickaction = new component_action('click', 'quiz_categorygrades_printone', array('qubaid' => $quizattempt->id, 'cmid' => $this->cm->id));
+        echo $OUTPUT->action_link('/mod/quiz/report/categorygrades/report.php', 'Print Single', $clickaction,
+                array('class' => 'categorygrades_print_single noprint', 'id' => 'categorygrades_print_single_' . $quizattempt->id) );
         $userinfo = $quizattempt->lastname . ', ' . $quizattempt->firstname . ' (' . $quizattempt->idnumber . ')';
         echo html_writer::tag('p', $userinfo, array('class' => 'cg_userinfo'));
         $quizinfo = htmlentities($this->quiz->name . ' ' . round($quizattempt->sumgrades / $this->quiz->sumgrades * 100),0) . '%';
@@ -368,11 +380,17 @@ class quiz_categorygrades_report extends quiz_default_report {
         return array ($this->fromtime, $this->totime);
     }
 
-    protected function display_attempts($pagesize, $page, $shownames, $showidnumbers, $order, $group) {
+    protected function display_attempts($pagesize, $page, $shownames, $showidnumbers, $order, $group, $qubaid = 0) {
         global $OUTPUT;
         global $PAGE;
 
-        $attempts = $this->get_quiz_attempts_by_group($group);
+        if($qubaid) {
+            $attempts = $this->get_quiz_attempts_by_group($group, $order, $qubaid);
+            $this->display_single_attempt($attempts[$qubaid]);
+            return;
+        }
+
+        $attempts = $this->get_quiz_attempts_by_group($group, $order);
         $count = count($attempts);
         if ($pagesize * $page >= $count) {
             $page = 0;
@@ -404,6 +422,26 @@ class quiz_categorygrades_report extends quiz_default_report {
         foreach (array_slice($attempts, $page * $pagesize, $pagesize, true) AS $attempt) {
             $this->display_single_attempt($attempt);
         }
+    }
+
+
+    /**
+     * Initialise some parts of $PAGE and start output.
+     *
+     * @param object $cm the course_module information.
+     * @param object $coures the course settings.
+     * @param object $quiz the quiz settings.
+     * @param string $reportmode the report name.
+     */
+    public function print_header_and_tabs($cm, $course, $quiz, $reportmode = 'overview') {
+        global $PAGE, $OUTPUT;
+
+        // Print the page header.
+        $PAGE->set_title($quiz->name);
+        $PAGE->set_heading($course->fullname);
+        echo $OUTPUT->header();
+        $context = context_module::instance($cm->id);
+        // echo $OUTPUT->heading(format_string($quiz->name, true, array('context' => $context)));
     }
 
 
